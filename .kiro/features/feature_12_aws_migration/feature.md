@@ -1,6 +1,34 @@
 # Feature 12: AWS Migration
 
-## Status: In Progress
+## Status: Done (public via CloudFront; custom domain deferred)
+
+## As Built (2026-10-11)
+
+The migration is live and publicly accessible. Reality differs from the original
+design below in one important way: **the DuckDB-from-S3 flow was never implemented.**
+The backend always reads a local DuckDB file (`server/db.ts`), and `deploy-ec2.ps1`
+SCPs the file directly to the instance. S3 is used only for the frontend bundle.
+
+- **Live URL**: `https://xxxxxxxxxxxxxx.cloudfront.net` (CloudFront, HTTPS, no custom domain)
+- **Backend**: EC2 t3.micro (`i-xxxxxxxxxxxxxxxxx`), Node 20, systemd service `poe2-explorer`,
+  app at `/opt/poe2-explorer`, GraphQL on port 4000. Works on both `/` and `/graphql`.
+- **DuckDB**: SCP'd to the instance as a local file (NOT downloaded from S3). `DB_SOURCE=local`.
+  Data: 11,388 characters / 241,945 items.
+- **CloudFront behaviors** (unchanged from original design): `/graphql` → EC2:4000,
+  `/api/trade2/*` → pathofexile.com, default `*` → S3 frontend. All verified end-to-end.
+- **Security group**: inbound 4000 allowed from both the CloudFront prefix list and the
+  developer IP (for direct testing); SSH restricted to the developer IP.
+- **Deploy**: `npm run deploy:frontend` (build + S3 sync + CloudFront invalidation, driven by
+  `server/deploy.ts` reading `deploy.config.json`); `deploy-ec2.ps1 backend|db|all` for the backend.
+
+> **Gotcha fixed:** a stale `explorer_v2.duckdb.wal` left next to the DB makes DuckDB refuse
+> the connection on startup (`DUCKDB_NODEJS_ERROR: Connection was never established`), causing a
+> systemd crash-loop. `deploy-ec2.ps1`'s DB step now stops the service, uploads, deletes the
+> `.wal`, then starts the service.
+
+> **Redaction note:** real instance/SG/subnet/distribution IDs are kept out of committed files.
+> They live in the gitignored `deploy.config.json` and `.kiro/memory.md`. Placeholders
+> (`i-xxxx`, `EXXXX`, etc.) appear throughout this doc and the committed scripts on purpose.
 
 ## Completed
 - [x] S3 bucket created (`poe2-build-explorer`, us-east-1, private + OAC)
@@ -75,7 +103,9 @@ Scraping and ingestion remain local to avoid AWS compute costs. After local inge
 
 ## Design Decisions
 
-### Why S3 for DuckDB storage?
+### Why S3 for DuckDB storage? (NOT ADOPTED)
+> Superseded: the DB is SCP'd straight to the EC2 instance as a local file. S3 is used
+> only for the frontend. The reasoning below was the original plan.
 - DuckDB file is ~158MB — too large for container image but fine for S3
 - Decouples data updates from code deploys
 - Can version/rollback by keeping old files
@@ -86,10 +116,10 @@ Scraping and ingestion remain local to avoid AWS compute costs. After local inge
 - Avoids paying for EC2 time during batch processing
 - Upload only the final artifact (~158MB, ~30s on decent connection)
 
-### Backend DuckDB loading
-- On startup, backend downloads `s3://bucket/explorer_v2.duckdb` to local disk
-- Opens DuckDB from local file (same as current behavior)
-- A `deploy:db` script uploads new file and optionally restarts the backend service
+### Backend DuckDB loading (ACTUAL)
+- The backend opens a **local** DuckDB file at `/opt/poe2-explorer/explorer_v2.duckdb` (`DB_SOURCE=local`).
+- `deploy-ec2.ps1 db` stops the service, SCPs the new file, deletes any stale `.wal`, then starts the service.
+- The S3-download-on-startup path (`DB_SOURCE=s3`) described in the original plan was never built.
 
 ### Frontend deployment
 - `vite build` produces `dist/` folder
@@ -159,15 +189,15 @@ The actual scripts will use a `deploy.config.json` or environment variables for 
 | `AWS_REGION` | AWS region | `us-east-1` |
 
 ## Acceptance Criteria
-- [ ] Frontend is accessible via CloudFront HTTPS URL
-- [ ] Backend responds to GraphQL queries on AWS
-- [ ] DuckDB loads from S3 on backend startup
-- [ ] `npm run deploy:frontend` builds and uploads frontend, invalidates cache
-- [ ] `npm run deploy:db` uploads local DuckDB to S3
-- [ ] `npm run deploy:backend` restarts the backend to pick up new DB
-- [ ] `npm run deploy:all` does full deployment in one command
-- [ ] Local development workflow unchanged (still uses local DuckDB file)
-- [ ] deploy.config.json is gitignored
+- [x] Frontend is accessible via CloudFront HTTPS URL
+- [x] Backend responds to GraphQL queries on AWS
+- [~] ~~DuckDB loads from S3 on backend startup~~ — changed: DuckDB is a local file SCP'd to EC2
+- [x] `npm run deploy:frontend` builds and uploads frontend, invalidates cache
+- [~] ~~`npm run deploy:db` uploads local DuckDB to S3~~ — changed: `deploy-ec2.ps1 db` SCPs to EC2
+- [x] `deploy-ec2.ps1 backend` restarts the backend to pick up new code
+- [x] `deploy-ec2.ps1 all` does full backend+db deployment in one command
+- [x] Local development workflow unchanged (still uses local DuckDB file)
+- [x] deploy.config.json is gitignored
 
 ## Files to Create/Modify
 - `.kiro/features/feature_12_aws_migration/feature.md` — this spec
