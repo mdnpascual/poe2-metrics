@@ -1,5 +1,7 @@
 # PoE2 Metrics
 
+**🔗 Live demo: https://d3td125rith00z.cloudfront.net**
+
 An interactive analytics explorer for **Path of Exile 2** character builds. It aggregates
 equipment, modifiers, skills, and defensive stats across thousands of high-level characters
 and presents the results as cascading filters, charts, and drill-down tables — so you can see
