@@ -1,0 +1,7 @@
+{
+	"awsRegion": "us-east-1",
+	"s3Bucket": "poe2-build-explorer",
+	"cloudfrontDistributionId": "EXXXXXXXXX",
+	"dbS3Key": "data/explorer_v2.duckdb",
+	"backendServiceName": "poe2-explorer-backend"
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=PoE2 Build Explorer Backend
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/opt/poe2-explorer
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=4000
+Environment=DB_SOURCE=local
+
+[Install]
+WantedBy=multi-user.target

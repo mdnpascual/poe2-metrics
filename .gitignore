@@ -1,0 +1,35 @@
+# ---- Dependencies ----
+node_modules/
+
+# ---- Build / generated output ----
+dist/
+src/graphql/generated/
+*.tsbuildinfo
+
+# ---- Data files (large, not source; exceed GitHub limits) ----
+*.db
+*.duckdb
+*.duckdb.wal
+*.bak
+
+# ---- Secrets / credentials ----
+*.pem
+deploy.config.json
+.env
+.env.*
+
+# ---- Kiro: keep features/project docs tracked, but not personal working memory ----
+.kiro/memory.md
+
+# ---- Runtime logs & process output ----
+logs/
+server_out.txt
+server_err.txt
+*.log
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
