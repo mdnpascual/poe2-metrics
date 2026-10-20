@@ -62,11 +62,19 @@ function Deploy-Db {
     }
 
     $sizeMB = [math]::Round((Get-Item $DbPath).Length / 1MB, 1)
-    Write-Host "`nUploading DuckDB ($sizeMB MB)... This may take a few minutes." -ForegroundColor Cyan
+    Write-Host "`nStopping service before DB upload..." -ForegroundColor Cyan
+    ssh @SshOpts $SshTarget "sudo systemctl stop poe2-explorer"
+
+    Write-Host "Uploading DuckDB ($sizeMB MB)... This may take a few minutes." -ForegroundColor Cyan
     scp @SshOpts $DbPath "${SshTarget}:${RemoteDir}/explorer_v2.duckdb"
 
+    # Remove any stale write-ahead log — a leftover .wal that doesn't match the
+    # freshly uploaded DB makes DuckDB refuse the connection on startup.
+    Write-Host "Removing stale WAL (if any)..." -ForegroundColor Cyan
+    ssh @SshOpts $SshTarget "rm -f ${RemoteDir}/explorer_v2.duckdb.wal"
+
     Write-Host "Restarting service..." -ForegroundColor Cyan
-    ssh @SshOpts $SshTarget "sudo systemctl restart poe2-explorer"
+    ssh @SshOpts $SshTarget "sudo systemctl start poe2-explorer"
 
     Write-Host "DuckDB deployed!" -ForegroundColor Green
 }

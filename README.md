@@ -1,6 +1,6 @@
 # PoE2 Metrics
 
-**🔗 Live demo: https://d3td125rith00z.cloudfront.net**
+**🔗 Live demo: https://poe2metrics.mduh.dev**
 
 An interactive analytics explorer for **Path of Exile 2** character builds. It aggregates
 equipment, modifiers, skills, and defensive stats across thousands of high-level characters
@@ -9,9 +9,9 @@ what the meta is actually running, which affixes dominate a given slot, and how 
 together.
 
 The goal is simple: turn a large pile of raw character data into fast, filterable, visual
-answers to questions like *"what base types are most common on rare amulets?"*, *"which
-explicit mods show up most on rings for a given class?"*, or *"what does the life/ES/armour
-distribution look like across the current league?"*
+answers to questions like _"what base types are most common on rare amulets?"_, _"which
+explicit mods show up most on rings for a given class?"_, or _"what does the life/ES/armour
+distribution look like across the current league?"_
 
 > This project is read-only analytics. It exposes **only aggregated counts and percentages** —
 > no character names, account names, or other personally identifying information are stored in
@@ -66,10 +66,10 @@ Aggregate item statistics for the current filter, rendered as charts and a sorta
 - Distribution **by base type** and **by item name** (bar charts, click a bar to filter)
 - Distribution **by rarity** and **by requirement type** (pie charts)
 - **Mod frequency** breakdowns, each as its own collapsible chart:
-  - Explicit mods (merged from explicit/fractured/crafted sources, deduped)
-  - Implicit mods
-  - Rune mods
-  - Anoints (clicking opens the corresponding passive reference page)
+    - Explicit mods (merged from explicit/fractured/crafted sources, deduped)
+    - Implicit mods
+    - Rune mods
+    - Anoints (clicking opens the corresponding passive reference page)
 - Average item level, corrupted count, and fractured count
 - A sortable base-types table at the bottom
 
@@ -95,16 +95,16 @@ plus average life and energy shield.
 
 ## Tech stack
 
-| Layer        | Choice                                        |
-| ------------ | --------------------------------------------- |
-| Language     | TypeScript (strict, ES2022, ESM)              |
-| Frontend     | React 19, Vite, Tailwind CSS                  |
-| Charts       | Recharts                                      |
-| Data table   | TanStack Table                                |
-| GraphQL client | urql                                        |
-| API          | Apollo Server 4 (Express)                     |
-| Database     | DuckDB (in-process, file-backed)              |
-| Codegen      | graphql-codegen (end-to-end type safety)      |
+| Layer          | Choice                                   |
+| -------------- | ---------------------------------------- |
+| Language       | TypeScript (strict, ES2022, ESM)         |
+| Frontend       | React 19, Vite, Tailwind CSS             |
+| Charts         | Recharts                                 |
+| Data table     | TanStack Table                           |
+| GraphQL client | urql                                     |
+| API            | Apollo Server 4 (Express)                |
+| Database       | DuckDB (in-process, file-backed)         |
+| Codegen        | graphql-codegen (end-to-end type safety) |
 
 ## Getting started
 
@@ -143,6 +143,56 @@ LocalToNet script reads its token from the `LOCALTONET_TOKEN` environment variab
 $env:LOCALTONET_TOKEN = "<your-token>"
 ./run-localtonet.ps1
 ```
+
+## Deploying to the live site
+
+The live site has two halves, deployed separately:
+
+| Part     | Hosted on                                     | What ships it                                  |
+| -------- | --------------------------------------------- | ---------------------------------------------- |
+| Frontend | S3 bucket behind CloudFront                   | `npm run deploy:frontend` (`server/deploy.ts`) |
+| Backend  | EC2 instance, `poe2-explorer` systemd service | `npm run deploy:backend` (`deploy-ec2.ps1`)    |
+| Data     | `explorer_v2.duckdb` on the EC2 instance      | `npm run deploy:db` (`deploy-ec2.ps1`)         |
+
+### One-time prerequisites
+
+- AWS CLI installed and authenticated (`aws sts get-caller-identity` should succeed).
+- `deploy.config.json` in the repo root (copy `deploy.config.example.json` and fill in the
+  bucket, region and CloudFront distribution ID). It is gitignored.
+- For backend/DB deploys: the instance ID set in `deploy-ec2.ps1`, the SSH key at
+  `.kiro/poe2-explorer-key.pem`, and `ssh`/`scp` on your PATH.
+
+### Which command to run
+
+1. **Typecheck first:** `npm run build`. Don't deploy if it fails.
+2. Pick the deploy based on what changed:
+
+| You changed…                           | Run                                                                                 |
+| -------------------------------------- | ----------------------------------------------------------------------------------- |
+| Only `src/` (UI, components, queries)  | `npm run deploy:frontend`                                                           |
+| `server/` (schema, resolvers, db code) | `npm run deploy:backend`, then `npm run deploy:frontend` if the UI uses the new API |
+| Re-ingested data (`npm run ingest:v2`) | `npm run deploy:db`                                                                 |
+| Everything                             | `npm run deploy:all` + `npm run deploy:frontend`                                    |
+
+`deploy:all` covers backend + DB only — the frontend is always a separate `deploy:frontend`.
+When changing both API and UI, deploy the backend first so the new UI never calls a missing field.
+
+### What each command does
+
+- `deploy:frontend` — runs `vite build`, syncs `dist/` to `s3://<bucket>/frontend/` with
+  `--delete`, then creates a CloudFront invalidation for `/*`. Changes typically appear within
+  a few minutes; hard-refresh (Ctrl+F5) if you still see the old version.
+- `deploy:backend` — compiles `server/` with `tsconfig.server.json`, SCPs `dist/server` plus
+  `package.json`/`package-lock.json` to the instance, runs `npm ci --production`, and restarts
+  the service.
+- `deploy:db` — stops the service, uploads the local `explorer_v2.duckdb` (~150 MB), deletes any
+  stale `.wal` on the instance, and starts the service again. The API is down during the upload.
+
+### If the EC2 instance is stopped
+
+Backend/DB deploys need the instance running (the script exits with "Instance is not running"
+otherwise). `npm run aws:start` starts it and points CloudFront at the new public IP;
+`npm run aws:stop` stops it to save cost.
 
 ## Project structure
 

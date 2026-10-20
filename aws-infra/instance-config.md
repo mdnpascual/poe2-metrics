@@ -66,3 +66,7 @@ Captured: 2026-08-11 (before termination)
 - Distribution ID: EXXXXXXXXXXXXX
 - Domain: xxxxxxxxxxxxxx.cloudfront.net
 - Origin: EC2 public DNS on port 4000 (path pattern: /graphql)
+- Alternate domain name: `poe2metrics.mduh.dev` (Route 53 alias `A`/`AAAA` in the `mduh.dev` zone, `<hosted-zone-id>`)
+- Certificate: ACM in `us-east-1` (`arn:aws:acm:us-east-1:<account-id>:certificate/<id>`), DNS-validated, SNI only, minimum `TLSv1.2_2021`
+- Viewer-request function `poe2-explorer-host-redirect` on the default (S3 SPA) behavior only: GET/HEAD on any other host (the old `*.cloudfront.net` URL) gets a 301 to `https://poe2metrics.mduh.dev`. `/graphql` and `/api/trade2/*` have no function and serve on both hosts.
+- Set up by `aws-infra/add-custom-domain.ps1` (idempotent, `-DryRun`). `aws-start.ps1` round-trips the whole config, so the alias and certificate survive it.

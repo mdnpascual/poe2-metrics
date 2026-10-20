@@ -1,13 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "urql";
-import {
-	BarChart,
-	Bar,
-	XAxis,
-	YAxis,
-	Tooltip,
-	ResponsiveContainer,
-} from "recharts";
+import { AnimatedBarList } from "./AnimatedBarList";
 import { ITEM_MODS_QUERY } from "../graphql/queries";
 import type { Filters } from "../App";
 
@@ -61,7 +54,8 @@ type StatMap = Map<string, string>; // text → id
 const TRADE_STATS_URL = "/api/trade2/data/stats";
 
 // Cache the trade stats fetch at module level so it's only called once per session
-let tradeStatsPromise: Promise<{ explicit: StatMap; pseudo: StatMap }> | null = null;
+let tradeStatsPromise: Promise<{ explicit: StatMap; pseudo: StatMap }> | null =
+	null;
 function fetchTradeStats(): Promise<{ explicit: StatMap; pseudo: StatMap }> {
 	if (!tradeStatsPromise) {
 		tradeStatsPromise = fetch(TRADE_STATS_URL)
@@ -123,12 +117,16 @@ function buildTradeUrl(
 	const rarity = selectedMods.length === 2 ? "magic" : "rare";
 	query.query.status = { option: "securable" };
 	query.query.filters = {
-		type_filters: { filters: { rarity: { option: rarity }, ilvl: { min: 78 } } },
+		type_filters: {
+			filters: { rarity: { option: rarity }, ilvl: { min: 78 } },
+		},
 	};
 
 	// Item category from slot filter
 	if (slots.length === 1 && SLOT_TO_CATEGORY[slots[0]]) {
-		query.query.filters.type_filters.filters.category = { option: SLOT_TO_CATEGORY[slots[0]] };
+		query.query.filters.type_filters.filters.category = {
+			option: SLOT_TO_CATEGORY[slots[0]],
+		};
 	}
 
 	// Requirement filters (e.g. "dex_int" → dex: {min:1}, int: {min:1})
@@ -141,7 +139,9 @@ function buildTradeUrl(
 	}
 
 	// Trade filters: indexed within 3 days
-	query.query.filters.trade_filters = { filters: { indexed: { option: "3days" } } };
+	query.query.filters.trade_filters = {
+		filters: { indexed: { option: "3days" } },
+	};
 
 	// Sort by price descending
 	query.sort = { price: "desc" };
@@ -159,7 +159,11 @@ function buildTradeUrl(
 
 	let eleMin = 0;
 	let chaosMin = 0;
-	const normalFilters: { id: string; disabled: boolean; value?: { min: number } }[] = [];
+	const normalFilters: {
+		id: string;
+		disabled: boolean;
+		value?: { min: number };
+	}[] = [];
 
 	for (const mod of selectedMods) {
 		const tradeText = modToTradeText(mod);
@@ -169,7 +173,9 @@ function buildTradeUrl(
 			const hasEle = ELE_RE.test(tradeText);
 			const hasChaos = CHAOS_RE.test(tradeText);
 			// Count how many ele resistances in this mod (e.g. "Fire and Cold" = 2)
-			const eleCount = (tradeText.match(/\b(fire|cold|lightning)\b/gi) ?? []).length;
+			const eleCount = (
+				tradeText.match(/\b(fire|cold|lightning)\b/gi) ?? []
+			).length;
 			const isCombination = (hasEle && hasChaos) || eleCount > 1;
 
 			if (isCombination) {
@@ -180,22 +186,35 @@ function buildTradeUrl(
 				if (hasChaos) chaosMin += 13;
 			}
 		} else {
-			const id = pseudoMap.get(tradeText)
-				?? statMap.get(`${tradeText} (Local)`)
-				?? statMap.get(tradeText)
-				?? statMap.get(mod)
-				?? mod;
+			const id =
+				pseudoMap.get(tradeText) ??
+				statMap.get(`${tradeText} (Local)`) ??
+				statMap.get(tradeText) ??
+				statMap.get(mod) ??
+				mod;
 			normalFilters.push({ id, disabled: false });
 		}
 	}
 
 	if (eleMin > 0) {
-		const eleId = pseudoMap.get("+#% total Elemental Resistance") ?? "pseudo.pseudo_total_elemental_resistance";
-		normalFilters.push({ id: eleId, disabled: false, value: { min: eleMin } });
+		const eleId =
+			pseudoMap.get("+#% total Elemental Resistance") ??
+			"pseudo.pseudo_total_elemental_resistance";
+		normalFilters.push({
+			id: eleId,
+			disabled: false,
+			value: { min: eleMin },
+		});
 	}
 	if (chaosMin > 0) {
-		const chaosId = pseudoMap.get("+#% total to Chaos Resistance") ?? "pseudo.pseudo_total_chaos_resistance";
-		normalFilters.push({ id: chaosId, disabled: false, value: { min: chaosMin } });
+		const chaosId =
+			pseudoMap.get("+#% total to Chaos Resistance") ??
+			"pseudo.pseudo_total_chaos_resistance";
+		normalFilters.push({
+			id: chaosId,
+			disabled: false,
+			value: { min: chaosMin },
+		});
 	}
 
 	query.query.stats = [{ type: "and", filters: normalFilters }];
@@ -228,7 +247,9 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 	const charFilter =
 		filters.classes.length || filters.keystones.length
 			? {
-					classes: filters.classes.length ? filters.classes : undefined,
+					classes: filters.classes.length
+						? filters.classes
+						: undefined,
 					keystones: filters.keystones.length
 						? filters.keystones
 						: undefined,
@@ -291,7 +312,8 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 			.map(([name, count]) => ({
 				name,
 				count,
-				percentage: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
+				percentage:
+					total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
 			}));
 	}, [matchingItems, selectedMods]);
 
@@ -306,7 +328,8 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 		<div className="space-y-6">
 			<h2 className="text-lg font-bold">Crafting Advisor</h2>
 			<p className="text-sm text-gray-400">
-				Select a base type and affixes to see what other mods top players pair with them.
+				Select a base type and affixes to see what other mods top
+				players pair with them.
 			</p>
 
 			{/* Base Type selector */}
@@ -317,7 +340,12 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 				<div className="flex gap-2 mb-2">
 					<button
 						onClick={() => {
-							setSelectedBaseTypes(["Sapphire", "Diamond", "Emerald", "Ruby"]);
+							setSelectedBaseTypes([
+								"Sapphire",
+								"Diamond",
+								"Emerald",
+								"Ruby",
+							]);
 							setSelectedMods([]);
 						}}
 						className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-gray-400 hover:text-white"
@@ -326,7 +354,12 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 					</button>
 					<button
 						onClick={() => {
-							setSelectedBaseTypes(["Time-Lost Sapphire", "Time-Lost Diamond", "Time-Lost Emerald", "Time-Lost Ruby"]);
+							setSelectedBaseTypes([
+								"Time-Lost Sapphire",
+								"Time-Lost Diamond",
+								"Time-Lost Emerald",
+								"Time-Lost Ruby",
+							]);
 							setSelectedMods([]);
 						}}
 						className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-gray-400 hover:text-white"
@@ -368,7 +401,12 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 								.filter(
 									(bt) =>
 										!selectedBaseTypes.includes(bt.name) &&
-										(!btSearch || bt.name.toLowerCase().includes(btSearch.toLowerCase())),
+										(!btSearch ||
+											bt.name
+												.toLowerCase()
+												.includes(
+													btSearch.toLowerCase(),
+												)),
 								)
 								.map((bt) => bt.name);
 							setSelectedBaseTypes((prev) => [...prev, ...toAdd]);
@@ -442,7 +480,19 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 						{/* Open in Trade button */}
 						<div className="mb-3">
 							<a
-								href={selectedMods.length >= 2 ? buildTradeUrl(selectedMods, selectedBaseTypes, league, statMap, pseudoMap, filters.slots, filters.reqTypes) : undefined}
+								href={
+									selectedMods.length >= 2
+										? buildTradeUrl(
+												selectedMods,
+												selectedBaseTypes,
+												league,
+												statMap,
+												pseudoMap,
+												filters.slots,
+												filters.reqTypes,
+											)
+										: undefined
+								}
 								target="_blank"
 								rel="noopener noreferrer"
 								className={`inline-block px-3 py-1.5 text-sm rounded border ${
@@ -508,59 +558,21 @@ export function CraftingAdvisor({ filters, baseTypeOptions, league }: Props) {
 							{coOccurring.length > 0 ? (
 								<>
 									<h3 className="text-sm font-semibold text-gray-300 mb-2">
-										{selectedMods.length > 0 ? "Most likely paired affixes" : "Most common affixes"}
+										{selectedMods.length > 0
+											? "Most likely paired affixes"
+											: "Most common affixes"}
 									</h3>
-									<ResponsiveContainer
-										width="100%"
-										height={coOccurring.length * 40}
-									>
-										<BarChart
-											data={coOccurring}
-											layout="vertical"
-											margin={{ left: 0, right: 20 }}
-										>
-											<XAxis
-												type="number"
-												stroke="#e5e7eb"
-												tick={{ fontSize: 13, fill: "#e5e7eb" }}
-												unit="%"
-											/>
-											<YAxis
-												type="category"
-												dataKey="name"
-												stroke="#e5e7eb"
-												width={400}
-												tick={{ fontSize: 12, fill: "#e5e7eb" }}
-											/>
-											<Tooltip
-												contentStyle={{
-													background: "#1f2937",
-													border: "1px solid #374151",
-													color: "#e5e7eb",
-													fontSize: 14,
-												}}
-												separator=""
-												formatter={(
-													_v: number,
-													_n: string,
-													props: any,
-												) => [
-													`${props.payload.count} items (${props.payload.percentage}%)`,
-													"",
-												]}
-											/>
-											<Bar
-												dataKey="percentage"
-												fill="#6366f1"
-												cursor="pointer"
-												onClick={(data: any) => {
-													if (data?.name && !selectedMods.includes(data.name)) {
-														setSelectedMods((prev) => [...prev, data.name]);
-													}
-												}}
-											/>
-										</BarChart>
-									</ResponsiveContainer>
+									<AnimatedBarList
+										data={coOccurring}
+										onSelect={(name) => {
+											if (!selectedMods.includes(name)) {
+												setSelectedMods((prev) => [
+													...prev,
+													name,
+												]);
+											}
+										}}
+									/>
 								</>
 							) : (
 								<p className="text-gray-500 text-sm">

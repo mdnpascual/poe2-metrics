@@ -16,6 +16,7 @@
 | 10 | Tier Lookup API | ❌ | Feature 2 | Not started |
 | 11 | Open in Trade | ❌ | Feature 9 | ✅ Done |
 | 12 | AWS Migration | ❌ | — | In progress (torn down to $0) |
+| 13 | Animated Affix Ranking | ✅ | Feature 9 | Done |
 
 ## Dependency Graph
 

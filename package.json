@@ -15,7 +15,7 @@
 		"codegen": "graphql-codegen",
 		"ingest": "tsx server/ingest.ts",
 		"ingest:v2": "tsx server/ingestv2.ts",
-		"deploy:frontend": "vite build && aws s3 sync dist/ s3://poe2-build-explorer/frontend/ --delete --region us-east-1 && aws cloudfront create-invalidation --distribution-id <TODO_REPLACE_WHEN_REDEPLOYING> --paths \"/*\" --region us-east-1",
+		"deploy:frontend": "tsx server/deploy.ts frontend",
 		"deploy:db": "powershell -ExecutionPolicy Bypass -File deploy-ec2.ps1 -Target db",
 		"deploy:backend": "powershell -ExecutionPolicy Bypass -File deploy-ec2.ps1 -Target backend",
 		"deploy:all": "powershell -ExecutionPolicy Bypass -File deploy-ec2.ps1 -Target all",

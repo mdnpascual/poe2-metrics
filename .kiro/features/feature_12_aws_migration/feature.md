@@ -1,6 +1,6 @@
 # Feature 12: AWS Migration
 
-## Status: Done (public via CloudFront; custom domain deferred)
+## Status: Done (public at https://poe2metrics.mduh.dev)
 
 ## As Built (2026-10-11)
 
@@ -9,7 +9,9 @@ design below in one important way: **the DuckDB-from-S3 flow was never implement
 The backend always reads a local DuckDB file (`server/db.ts`), and `deploy-ec2.ps1`
 SCPs the file directly to the instance. S3 is used only for the frontend bundle.
 
-- **Live URL**: `https://xxxxxxxxxxxxxx.cloudfront.net` (CloudFront, HTTPS, no custom domain)
+- **Live URL**: `https://poe2metrics.mduh.dev` (CloudFront, HTTPS). The default
+  `xxxxxxxxxxxxxx.cloudfront.net` URL 301s there for SPA page loads; `/graphql` and
+  `/api/trade2/*` still answer on both hosts. Custom domain added 2026-10-17 (see below).
 - **Backend**: EC2 t3.micro (`i-xxxxxxxxxxxxxxxxx`), Node 20, systemd service `poe2-explorer`,
   app at `/opt/poe2-explorer`, GraphQL on port 4000. Works on both `/` and `/graphql`.
 - **DuckDB**: SCP'd to the instance as a local file (NOT downloaded from S3). `DB_SOURCE=local`.
@@ -42,14 +44,20 @@ SCPs the file directly to the instance. S3 is used only for the frontend bundle.
 - [x] Compression verified (18.5MB → 1.27MB brotli, 93% reduction)
 - [x] Port 4000 restricted to CloudFront IPs (prefix list)
 - [x] Deploy scripts created (deploy:frontend, deploy:backend, deploy:db, aws:start, aws:stop)
-- [x] ACM certificate requested for poe2metrics.com
+- [x] Custom domain `poe2metrics.mduh.dev` (2026-10-17): ACM certificate in us-east-1
+      (DNS-validated in the `mduh.dev` Route 53 zone), alternate domain name, SNI only,
+      `TLSv1.2_2021`, alias `A`/`AAAA` records, and the `poe2-explorer-host-redirect`
+      viewer-request function on the default behavior. Done by the idempotent
+      `aws-infra/add-custom-domain.ps1` (`-DryRun` supported). The earlier plan for a
+      separate `poe2metrics.com` domain was dropped in favor of a subdomain of the
+      portfolio's `mduh.dev`. Spec: `portfolio-website-design/specs/custom-domain/` (Part 2).
+- [x] CloudFront origin update automated in `aws-start.ps1` (rewrites the EC2 origin after
+      stop/start; round-trips the full config, so the alias and certificate survive). Its
+      config write is BOM-free (`[IO.File]::WriteAllText`); 5.1's `Out-File -Encoding utf8`
+      added a BOM the AWS CLI rejected.
 
 ## Remaining
-- [ ] Complete domain registration for poe2metrics.com (AWS support ticket — payment method was expired, now fixed)
-- [ ] Validate ACM certificate via DNS (add CNAME to Route 53 hosted zone)
-- [ ] Attach certificate + custom domain to CloudFront distribution
-- [ ] Create Route 53 alias record: poe2metrics.com → CloudFront
-- [ ] Automate CloudFront origin update in aws-start.ps1 (after IP changes on stop/start)
+- None.
 
 ## Priority: Next (after Feature 11)
 

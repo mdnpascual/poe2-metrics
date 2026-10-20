@@ -68,7 +68,7 @@ Write-Host "`nWaiting 30s for SSH to be ready..." -ForegroundColor Yellow
 Start-Sleep -Seconds 30
 
 # Setup the instance
-$KeyPath = "$PSScriptRoot\.kiro\poe2-explorer-key.pem"
+$KeyPath = "$PSScriptRoot\..\.kiro\poe2-explorer-key.pem"
 $SshOpts = "-i", $KeyPath, "-o", "StrictHostKeyChecking=no"
 $SshTarget = "ec2-user@$IP"
 
@@ -79,7 +79,7 @@ Write-Host "Creating application directory..." -ForegroundColor Cyan
 ssh @SshOpts $SshTarget "sudo mkdir -p /opt/poe2-explorer && sudo chown ec2-user:ec2-user /opt/poe2-explorer"
 
 Write-Host "Installing systemd service..." -ForegroundColor Cyan
-$ServiceContent = Get-Content "$PSScriptRoot\aws-infra\poe2-explorer.service" -Raw
+$ServiceContent = Get-Content "$PSScriptRoot\poe2-explorer.service" -Raw
 # Upload service file
 $ServiceContent | ssh @SshOpts $SshTarget "sudo tee /etc/systemd/system/poe2-explorer.service > /dev/null"
 ssh @SshOpts $SshTarget "sudo systemctl daemon-reload && sudo systemctl enable poe2-explorer"

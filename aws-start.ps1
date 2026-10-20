@@ -56,7 +56,8 @@ foreach ($behavior in $distConfig.CacheBehaviors.Items) {
 }
 
 # Write updated config to temp file
-$distConfig | ConvertTo-Json -Depth 20 | Out-File -Encoding utf8 "$env:TEMP\cf-config.json"
+# BOM-free: 5.1's Out-File -Encoding utf8 adds a BOM the AWS CLI can't parse.
+[IO.File]::WriteAllText("$env:TEMP\cf-config.json", ($distConfig | ConvertTo-Json -Depth 20))
 
 # Update the distribution
 aws cloudfront update-distribution --id $DistributionId --distribution-config "file://$env:TEMP\cf-config.json" --if-match $etag --region $Region | Out-Null
@@ -72,5 +73,5 @@ Remove-Item "$env:TEMP\cf-config.json" -ErrorAction SilentlyContinue
 
 Write-Host "`nAll done!" -ForegroundColor Cyan
 Write-Host "  Backend:  http://${IP}:4000/" -ForegroundColor White
-Write-Host "  Site:     https://xxxxxxxxxxxxxx.cloudfront.net" -ForegroundColor White
+Write-Host "  Site:     https://poe2metrics.mduh.dev" -ForegroundColor White
 Write-Host "  SSH:      ssh -i .kiro\poe2-explorer-key.pem ec2-user@$IP" -ForegroundColor DarkGray
